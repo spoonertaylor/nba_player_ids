@@ -78,8 +78,8 @@ bbref_get_player_id_one_season = function(season) {
 #' # Scrape for 2018-2019 Season
 #' bbref_get_player_id(2019)
 #' 
-#' # Scrape for 2004 to 2019 seasons
-#' bbref_get_player_id(2004:2019)
+#' # Scrape for 2005 to 2019 seasons
+#' bbref_get_player_id(2005:2019)
 bbref_get_player_id = function(seasons) {
   `%dopar%` = foreach::`%dopar%`
   # Run over each of the seasons given
