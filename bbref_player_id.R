@@ -12,7 +12,7 @@
 #' @param season NBA season (by end of year). Ex: 2018-2019 season is 2019
 #' @return Data frame with one row per player
 #' Columns: 
-#'  player_name, bbref_link, bbref_id, season
+#'  player_name, first_name, last_name, bbref_link, bbref_id, season
 #'        
 #' @examples 
 #' # Scrape for 2018-2019 Season
@@ -48,6 +48,10 @@ bbref_get_player_id_one_season = function(season) {
     player_name = names,
     bbref_link = links
   )
+  # Split player name to first and last name by first space
+  player_df = player_df %>%
+    tidyr::separate(player_name, c("first_name", "last_name"), sep = " ", remove = FALSE, extra = "merge")
+  
   # Clean the link and get the id
   player_df = player_df %>% 
     dplyr::mutate(bbref_link = stringr::str_remove(stringr::str_remove(bbref_link, ".html"), "/players/"))
@@ -72,7 +76,7 @@ bbref_get_player_id_one_season = function(season) {
 #' @param season NBA season or seasons (season by end of year). Ex: 2018-2019 season is 2019
 #' @return Data frame with one row per player
 #' Columns: 
-#'  player_name, bbref_link, bbref_id, first_season, last_season
+#'  player_name, first_name, last_name, bbref_link, bbref_id, first_season, last_season
 #'        
 #' @examples 
 #' # Scrape for 2018-2019 Season
@@ -89,8 +93,12 @@ bbref_get_player_id = function(seasons) {
   }
   # Get first and last year player is in list
   player_df = player_df %>%
-    dplyr::group_by(player_name, bbref_link, bbref_id) %>%
-    dplyr::summarise(first_season = min(season), last_season = max(season))
+    dplyr::group_by(player_name, first_name, last_name, bbref_link, bbref_id) %>%
+    dplyr::summarise(first_season = min(season), last_season = max(season)) %>% ungroup()
+  # Fix types 
+  player_df = suppressMessages(readr::type_convert(player_df))
+  player_df = player_df %>% dplyr::mutate(player_name = as.character(player_name))
+  
 
   return(player_df) 
 }

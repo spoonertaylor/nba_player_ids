@@ -15,7 +15,7 @@
 #' @param count Count for espn stats page. First page starts at count = 1 and goes up by about 40.
 #' @return Data frame with one row per player
 #' Columns: 
-#'  player_name, espn_link, espn_number, espn_id, season.
+#'  player_name, first_name, last_name, espn_link, espn_number, espn_id, season.
 #'        
 #' @examples 
 #' # Scrape for 2018-2019 Season first page
@@ -65,9 +65,12 @@ espn_get_player_id_count = function(season, count) {
   links = links[!player_unique]
   # Put into a dataframe
   player_df = data.frame(
-    player_name = names,
+    player_name = as.character(names),
     espn_link = links
   )
+  # Seperate player name into first and last name
+  player_df = player_df %>%
+    tidyr::separate(player_name, into = c("first_name", "last_name"), sep = " ", remove = FALSE, extra = "merge")
   
   # Clean the link and get the id
   player_df = player_df %>% 
@@ -97,7 +100,7 @@ espn_get_player_id_count = function(season, count) {
 #' @param season NBA season (by end of year). Ex: 2018-2019 season is 2019
 #' @return Data frame with one row per player
 #' Columns: 
-#'  player_name, espn_link, espn_number, espn_id, season.
+#'  player_name, first_name, last_name, espn_link, espn_number, espn_id, season.
 #'        
 #' @examples 
 #' # Scrape for 2018-2019 Season
@@ -127,7 +130,7 @@ espn_get_player_id_season = function(season) {
 #' @param season NBA season or range of seasons (by end of year). Ex: 2018-2019 season is 2019
 #' @return Data frame with one row per player
 #' Columns: 
-#'  player_name, espn_link, espn_number, espn_id, first_season, last_season
+#'  player_name, first_name, last_name, espn_link, espn_number, espn_id, first_season, last_season
 #'        
 #' @examples 
 #' # Scrape for 2018-2019 Season
@@ -143,8 +146,11 @@ espn_get_player_id = function(seasons) {
   }
   # Get first and last year player is in list
   player_df = player_df %>%
-    dplyr::group_by(player_name, espn_link, espn_number, espn_id) %>%
-    dplyr::summarise(first_season = min(season), last_season = max(season))
+    dplyr::group_by(player_name, first_name, last_name, espn_link, espn_number, espn_id) %>%
+    dplyr::summarise(first_season = min(season), last_season = max(season)) %>% ungroup()
+  
+  player_df = suppressMessages(readr::type_convert(player_df))
+  player_df = player_df %>% dplyr::mutate(player_name = as.character(player_name))
   
   return(player_df) 
 }
