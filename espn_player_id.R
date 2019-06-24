@@ -70,7 +70,17 @@ espn_get_player_id_count = function(season, count) {
   )
   # Seperate player name into first and last name
   player_df = player_df %>%
-    tidyr::separate(player_name, into = c("first_name", "last_name"), sep = " ", remove = FALSE, extra = "merge")
+    tidyr::separate(player_name, into = c("first_name_punc", "last_name_punc"), 
+                    sep = " ", remove = FALSE, extra = "merge")
+  # Create lower case, unpunctuated names for joining
+  # Also create column for last name suffix (jr, iii, etc.)
+  player_df = player_df %>%
+    dplyr::mutate(first_name_lower = tolower(stringr::str_remove_all(first_name_punc, "[^A-Za-z\\-]+")),
+                  last_name_lower = tolower(stringr::str_remove_all(last_name_punc, "[^\\s\\-A-Za-z]"))) %>%
+    # Extract the suffix
+    dplyr::mutate(last_name_suffix = stringr::str_extract(last_name_lower, "\\s(jr|i|ii|iii|iv|v)*$"),
+                  last_name_lower = stringr::str_remove(last_name_lower, "\\s(jr|i|ii|iii|iv|v)*$"))
+  
   
   # Clean the link and get the id
   player_df = player_df %>% 
@@ -83,6 +93,11 @@ espn_get_player_id_count = function(season, count) {
   # Add season as a column
   player_df = player_df %>%
     dplyr::mutate(season = season)
+  
+  # Put columns in correct order
+  player_df = player_df %>%
+    dplyr::select(player_name, first_name_punc, last_name_punc, first_name_lower, last_name_lower, last_name_suffix,
+                  espn_link, espn_number, espn_id, season)
 
   return(player_df)
 }
@@ -128,6 +143,7 @@ espn_get_player_id_season = function(season) {
 #' @note Assumes that there were at most 600 players that played in the league for any given year. Theoretically, it could miss players.
 #' 
 #' @param season NBA season or range of seasons (by end of year). Ex: 2018-2019 season is 2019
+#' @param parallel Boolean. True is run in parralel.
 #' @return Data frame with one row per player
 #' Columns: 
 #'  player_name, first_name, last_name, espn_link, espn_number, espn_id, first_season, last_season
@@ -137,17 +153,32 @@ espn_get_player_id_season = function(season) {
 #' espn_get_player_id(2019)
 #' # Scrape for 2005 to 2019 Season
 #' espn_get_player_id(2005:2019)
-espn_get_player_id = function(seasons) {
+espn_get_player_id = function(seasons, parallel = TRUE) {
   `%dopar%` = foreach::`%dopar%`
+  # Set up parallel running
+  if (parallel) {
+    cores = parallel::detectCores()
+    cl = parallel::makeCluster(cores[1] - 1)
+    doParallel::registerDoParallel(cl)
+  }
   # Run over each of the seasons given
-  player_df = foreach::foreach(season = seasons, .combine=rbind) %dopar% {
+  player_df = foreach::foreach(season = seasons, .combine=rbind, 
+                               .export = c('espn_get_player_id_count', 'espn_get_player_id_season')) %dopar% {
     `%>%` = dplyr::`%>%`
     espn_get_player_id_season(season)
   }
+  
+  # Stop clusters
+  if (parallel) {
+    parallel::stopCluster(cl)
+  }
+  
   # Get first and last year player is in list
   player_df = player_df %>%
-    dplyr::group_by(player_name, first_name, last_name, espn_link, espn_number, espn_id) %>%
-    dplyr::summarise(first_season = min(season), last_season = max(season)) %>% ungroup()
+    dplyr::group_by(player_name, first_name_punc, last_name_punc, first_name_lower, last_name_lower, last_name_suffix, 
+                    espn_link, espn_number, espn_id) %>%
+    dplyr::summarise(first_season = min(season), last_season = max(season)) %>% 
+    dplyr::ungroup()
   
   player_df = suppressMessages(readr::type_convert(player_df))
   player_df = player_df %>% dplyr::mutate(player_name = as.character(player_name))
