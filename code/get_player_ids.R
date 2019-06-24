@@ -1,10 +1,10 @@
 # PURPOSE: Run final scraping functions in one script
 
 # * Scripts ----
-source('data_scraping/player_ids/bbref_player_id.R')
-source('data_scraping/player_ids/espn_player_id.R')
-source('data_scraping/player_ids/sports_ref_player_id.R')
-source('data_scraping/bbref_tables/years_in_college.R')
+source('../code/bbref_player_id.R')
+source('../code/espn_player_id.R')
+source('../code/sports_ref_player_id.R')
+source('../code/years_in_college.R')
 # * SEASONS ----
 # Remember seasons are coded as end year.
 # 2004-2005 season is 2005.
